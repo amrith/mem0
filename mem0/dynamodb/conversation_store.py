@@ -50,6 +50,10 @@ class DynamoDBConversationStore:
         Returns:
             conversation_id: Unique identifier for the conversation
         """
+        # Apply history_size limit if configured
+        if self.config.history_size and len(messages) > self.config.history_size:
+            messages = messages[-self.config.history_size:]
+
         conversation_id = f"{user_id}:{int(get_utc_timestamp())}"
         timestamp = get_utc_timestamp()
 
@@ -148,6 +152,14 @@ class DynamoDBConversationStore:
         Returns:
             success: True if update was successful
         """
+        # If history_size is configured, fetch existing messages and trim
+        if self.config.history_size:
+            existing_conversation = self.get_conversation(user_id, conversation_id)
+            if existing_conversation:
+                existing_messages = existing_conversation["messages"]
+                all_messages = existing_messages + messages
+                messages = all_messages[-self.config.history_size:]
+
         update_expression = "SET messages = :messages, updated_at = :updated_at"
         expression_values = {":messages": json.dumps(messages), ":updated_at": get_utc_timestamp()}
 

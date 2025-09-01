@@ -23,6 +23,7 @@ class DynamoDBConversationConfig(DynamoDBConfig):
     ttl_enabled: bool = Field(default=False, description="Enable TTL for conversations")
     ttl_attribute: str = Field(default="expiration_time", description="TTL attribute name")
     ttl_days: int = Field(default=30, description="Number of days until conversation expiration")
+    history_size: int = Field(default=None, description="Number of messages to keep in conversation history")
 
 
 class DynamoDBGraphConfig(DynamoDBConfig):

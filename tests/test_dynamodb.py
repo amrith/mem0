@@ -112,6 +112,61 @@ class TestDynamoDBConversationStore:
 
         assert result is False
 
+    def test_update_conversation_with_history_size(self, mock_table):
+        """Test updating conversation with history_size limit."""
+        from mem0.dynamodb.config import DynamoDBConversationConfig
+        from mem0.dynamodb.conversation_store import DynamoDBConversationStore
+        
+        config = DynamoDBConversationConfig(table_name="test_table", history_size=3)
+        store = DynamoDBConversationStore(config)
+        store.table = mock_table
+        
+        mock_table.get_item.return_value = {
+            "Item": {
+                "user_id": "test_user",
+                "conversation_id": "test_conv",
+                "messages": '[{"role": "user", "content": "msg1"}, {"role": "assistant", "content": "msg2"}]',
+                "timestamp": 1234567890
+            }
+        }
+        
+        new_messages = [{"role": "user", "content": "msg3"}, {"role": "assistant", "content": "msg4"}]
+        store.update_conversation("test_user", "test_conv", new_messages)
+        
+        call_args = mock_table.update_item.call_args
+        messages_arg = call_args[1]["ExpressionAttributeValues"][":messages"]
+        import json
+        saved_messages = json.loads(messages_arg)
+        
+        assert len(saved_messages) == 3
+        assert saved_messages[0]["content"] == "msg2"
+        assert saved_messages[1]["content"] == "msg3"
+        assert saved_messages[2]["content"] == "msg4"
+
+    def test_store_conversation_with_history_size(self, mock_table):
+        """Test storing conversation with history_size limit."""
+        from mem0.dynamodb.config import DynamoDBConversationConfig
+        from mem0.dynamodb.conversation_store import DynamoDBConversationStore
+        
+        config = DynamoDBConversationConfig(table_name="test_table", history_size=2)
+        store = DynamoDBConversationStore(config)
+        store.table = mock_table
+        
+        messages = [
+            {"role": "user", "content": "msg1"},
+            {"role": "assistant", "content": "msg2"},
+            {"role": "user", "content": "msg3"},
+            {"role": "assistant", "content": "msg4"}
+        ]
+        store.store_conversation("test_user", messages)
+        
+        call_args = mock_table.put_item.call_args
+        stored_messages = json.loads(call_args[1]["Item"]["messages"])
+        
+        assert len(stored_messages) == 2
+        assert stored_messages[0]["content"] == "msg3"
+        assert stored_messages[1]["content"] == "msg4"
+
     def test_delete_conversation_not_found(self, conversation_store, mock_table):
         """Test deleting non-existent conversation."""
         mock_table.delete_item.side_effect = Exception("Item not found")
