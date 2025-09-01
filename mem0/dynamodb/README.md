@@ -60,7 +60,8 @@ conversation_config = DynamoDBConversationConfig(
     table_name="Mem0Conversations",
     region="us-east-1",
     ttl_enabled=True,
-    ttl_days=30
+    ttl_days=30,
+    history_size=50
 )
 
 # Configure DynamoDB for graph database
